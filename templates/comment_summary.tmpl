@@ -1,0 +1,91 @@
+{{- /*
+
+The template reads a file with a report (the report file is available
+as an artifact in the model regression tests workflow) and returns
+a markdown table with a summary of the tests.
+
+*/ -}}
+{{- /*
+
+The accuracy_tpl template returns data for the accuracy field.
+
+*/ -}}
+{{ define "accuracy_tpl" -}}
+{{- if has .main "accuracy" -}}
+{{ printf "%.4f" .branch.accuracy }} ({{ printf "%.2f" (.main.accuracy | math.Sub .branch.accuracy) }})
+{{- else -}}
+{{ printf "%.4f" .branch.accuracy }} (`no data`)
+{{- end -}}
+{{- end -}}
+{{- /*
+
+The micro_avg_tpl template returns data for the "micro avg" field.
+
+*/ -}}
+{{ define "micro_avg_tpl" -}}
+{{- if has .main.micro_avg "f1-score" -}}
+{{ printf "%.4f" (index .branch.micro_avg "f1-score") }} ({{ printf "%.2f" ((index .main.micro_avg "f1-score") | math.Sub (index .branch.micro_avg "f1-score")) }})
+{{- else -}}
+{{ printf "%.4f" (index .branch.micro_avg "f1-score") }} (`no data`)
+{{- end -}}
+{{- end -}}
+{{- /*
+
+Render Markdown with results.
+
+*/ -}}
+{{- $results_main := (datasource "results_main") -}}
+{{ range $dataset, $config := (datasource "data")}}
+{{- $dataset_main := (index $results_main $dataset) -}}
+Data: `{{$dataset}}`
+
+| Configuration | Intent Classification Micro F1 | Entity Recognition Micro F1 | Response Selection Micro F1 | Story Recognition Micro F1 |
+|---------------|-----------------|-----------------|-------------------|-------------------|
+{{ range $config_name, $config_data := $config -}}
+| `{{ $config_name }}` |
+{{- if has $config_data "intent_classification" -}}
+{{- /* Use results from branch if there is lack of data doesn't exist in results from scheduled version */ -}}
+{{- $intent_class_main := $config_data.intent_classification -}}
+{{- if has $dataset_main $config_name -}}
+{{- $intent_class_main = (index $dataset_main $config_name).intent_classification -}}
+{{- end -}}
+{{- $intent_class := index $config_data.intent_classification -}}
+{{- if has (index $intent_class "micro_avg") "f1-score" -}}{{ template "micro_avg_tpl" (dict "branch" $intent_class "main" $intent_class_main) }}{{- else if has $intent_class "accuracy" -}}{{ template "accuracy_tpl" (dict "branch" $intent_class "main" $intent_class_main) }}{{- else -}}`no data`{{- end -}} |
+{{- else -}}
+`no data`|
+{{- end -}}
+{{- if has $config_data "entity_prediction" -}}
+{{- /* Use results from branch if there is lack of data doesn't exist in results from scheduled version */ -}}
+{{- $entity_class_main := index $config_data.entity_prediction -}}
+{{- if has $dataset_main $config_name -}}
+{{- $entity_class_main = (index $dataset_main $config_name).entity_prediction -}}
+{{- end -}}
+{{- $entity_class := $config_data.entity_prediction -}}
+{{- if has (index $entity_class "micro_avg") "f1-score" -}}{{ template "micro_avg_tpl" (dict "branch" $entity_class "main" $entity_class_main) }}{{- else if has $entity_class "accuracy" -}}{{ template "accuracy_tpl" (dict "branch" $entity_class "main" $entity_class_main) }}{{- else -}}`no data`{{- end -}} |
+{{- else -}}
+`no data`|
+{{- end -}}
+{{- if has $config_data "response_selection" -}}
+{{- /* Use results from branch if there is lack of data doesn't exist in results from scheduled version */ -}}
+{{- $response_class_main := index $config_data.response_selection -}}
+{{- if has $dataset_main $config_name -}}
+{{- $response_class_main = (index $dataset_main $config_name).response_selection -}}
+{{- end -}}
+{{- $response_class := $config_data.response_selection -}}
+{{- if has (index $response_class "micro_avg") "f1-score" -}}{{ template "micro_avg_tpl" (dict "branch" $response_class "main" $response_class_main) }}{{- else if has $response_class "accuracy" -}}{{ template "accuracy_tpl" (dict "branch" $response_class "main" $response_class_main) }}{{- else -}}`no data`{{- end -}} |
+{{- else -}}
+`no data`|
+{{- end -}}
+{{- if has $config_data "story_prediction" -}}
+{{- /* Use results from branch if there is lack of data doesn't exist in results from scheduled version */ -}}
+{{- $story_class_main := index $config_data.story_prediction -}}
+{{- if has $dataset_main $config_name -}}
+{{- $story_class_main = (index $dataset_main $config_name).story_prediction -}}
+{{- end -}}
+{{- $story_class := $config_data.story_prediction -}}
+{{- if has (index $story_class "micro_avg") "f1-score" -}}{{ template "micro_avg_tpl" (dict "branch" $story_class "main" $story_class_main) }}{{- else if has $story_class "accuracy" -}}{{ template "accuracy_tpl" (dict "branch" $story_class "main" $story_class_main) }}{{- else -}}`no data`{{- end -}} |
+{{- else -}}
+`no data`|
+{{- end }}
+{{end}}
+{{end}}
